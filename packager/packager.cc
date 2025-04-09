@@ -99,7 +99,17 @@ struct FullyQualifiedName {
     }
 };
 
-struct PackageName {
+struct PackageNameDef {
+    core::packages::MangledName mangledName;
+    FullyQualifiedName fullName;
+
+    // Pretty print the package's (user-observable) name (e.g. Foo::Bar)
+    string toString(const core::GlobalState &gs) const {
+        return absl::StrJoin(fullName.parts, "::", core::packages::NameFormatter(gs));
+    }
+};
+
+struct PackageNameUse {
     core::packages::MangledName mangledName;
     FullyQualifiedName fullName;
 
@@ -110,10 +120,10 @@ struct PackageName {
 };
 
 struct Import {
-    PackageName name;
+    PackageNameUse name;
     core::packages::ImportType type;
 
-    Import(PackageName &&name, core::packages::ImportType type) : name(std::move(name)), type(type) {}
+    Import(PackageNameUse &&name, core::packages::ImportType type) : name(std::move(name)), type(type) {}
 };
 
 struct Export {
@@ -132,10 +142,10 @@ struct Export {
 };
 
 struct VisibleTo {
-    PackageName name;
+    PackageNameUse name;
     core::packages::VisibleToType type;
 
-    VisibleTo(PackageName &&name, core::packages::VisibleToType type) : name(move(name)), type(type) {}
+    VisibleTo(PackageNameUse &&name, core::packages::VisibleToType type) : name(move(name)), type(type) {}
 };
 
 // For a given vector of NameRefs, this represents the "next" vector that does not begin with its
@@ -205,7 +215,7 @@ public:
         return visibleToTests_;
     }
 
-    PackageName name;
+    PackageNameDef name;
 
     // loc for the package definition. Full loc, from class to end keyword. Used for autocorrects.
     core::Loc loc;
@@ -274,7 +284,8 @@ public:
         return this->mangledName() == pkg.mangledName();
     }
 
-    PackageInfoImpl(PackageName name, core::Loc loc, core::Loc declLoc_) : name(name), loc(loc), declLoc_(declLoc_) {}
+    PackageInfoImpl(PackageNameDef name, core::Loc loc, core::Loc declLoc_)
+        : name(name), loc(loc), declLoc_(declLoc_) {}
     explicit PackageInfoImpl(const PackageInfoImpl &) = default;
     PackageInfoImpl &operator=(const PackageInfoImpl &) = delete;
 
@@ -704,6 +715,7 @@ FullyQualifiedName getFullyQualifiedName(core::Context ctx, const ast::Unresolve
 }
 
 // Gets the package name in `tree` if applicable.
+template <typename PackageName>
 PackageName getPackageName(core::Context ctx, const ast::UnresolvedConstantLit *constantLit) {
     ENFORCE(constantLit != nullptr);
 
@@ -1270,7 +1282,8 @@ struct PackageSpecBodyWalk {
                 auto importArg = move(posArg);
                 posArg = ast::packager::prependRegistry(move(importArg));
 
-                info.importedPackageNames.emplace_back(getPackageName(ctx, target), method2ImportType(send));
+                info.importedPackageNames.emplace_back(getPackageName<PackageNameUse>(ctx, target),
+                                                       method2ImportType(send));
             }
         }
 
@@ -1312,7 +1325,8 @@ struct PackageSpecBodyWalk {
                     auto &posArg = send.getPosArg(0);
                     auto importArg = move(target->recv);
                     posArg = ast::packager::prependRegistry(move(importArg));
-                    info.visibleTo_.emplace_back(getPackageName(ctx, recv), core::packages::VisibleToType::Wildcard);
+                    info.visibleTo_.emplace_back(getPackageName<PackageNameUse>(ctx, recv),
+                                                 core::packages::VisibleToType::Wildcard);
                 } else {
                     if (auto e = ctx.beginError(target->loc, core::errors::Packager::InvalidConfiguration)) {
                         e.setHeader("Argument to `{}` must be a constant or the string literal `{}`",
@@ -1325,7 +1339,8 @@ struct PackageSpecBodyWalk {
                 auto importArg = move(posArg);
                 posArg = ast::packager::prependRegistry(move(importArg));
 
-                info.visibleTo_.emplace_back(getPackageName(ctx, target), core::packages::VisibleToType::Normal);
+                info.visibleTo_.emplace_back(getPackageName<PackageNameUse>(ctx, target),
+                                             core::packages::VisibleToType::Normal);
             }
         }
 
@@ -1579,8 +1594,8 @@ unique_ptr<PackageInfoImpl> definePackage(const core::GlobalState &gs, ast::Pars
         auto nameTree = ast::cast_tree<ast::UnresolvedConstantLit>(packageSpecClass->name);
         ENFORCE(nameTree != nullptr, "Invariant from rewriter");
 
-        return make_unique<PackageInfoImpl>(getPackageName(ctx, nameTree), ctx.locAt(packageSpecClass->loc),
-                                            ctx.locAt(packageSpecClass->declLoc));
+        return make_unique<PackageInfoImpl>(getPackageName<PackageNameDef>(ctx, nameTree),
+                                            ctx.locAt(packageSpecClass->loc), ctx.locAt(packageSpecClass->declLoc));
     }
 
     return nullptr;
@@ -1606,7 +1621,7 @@ void rewritePackageSpec(const core::GlobalState &gs, ast::ParsedFile &package, P
 }
 
 // TODO(jez) Rename this to lookupMangledName, and make it take a const GlobalState
-void populateMangledName(core::GlobalState &gs, PackageName &pName) {
+template <typename PackageName> void populateMangledName(core::GlobalState &gs, PackageName &pName) {
     pName.mangledName = core::packages::MangledName::mangledNameFromParts(gs, pName.fullName.parts);
 }
 
