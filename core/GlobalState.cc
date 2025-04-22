@@ -2192,7 +2192,7 @@ GlobalState::copyForIndex(const vector<string> &extraPackageFilesDirectoryUnders
     {
         core::UnfreezeNameTable unfreezeToEnterPackagerOptionsGS(*result);
         core::packages::UnfreezePackages unfreezeToEnterPackagerOptionsPackageDB = result->unfreezePackages();
-        result->setPackagerOptions(extraPackageFilesDirectoryUnderscorePrefixes,
+        result->setPackagerOptions(packageDB_.enabled_, extraPackageFilesDirectoryUnderscorePrefixes,
                                    extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                    extraPackageFilesDirectorySlashPrefixes, packageSkipRBIExportEnforcementDirs,
                                    allowRelaxedPackagerChecksFor, packagerLayers, errorHint);
@@ -2237,7 +2237,7 @@ GlobalState::copyForSlowPath(const vector<string> &extraPackageFilesDirectoryUnd
     {
         core::UnfreezeNameTable unfreezeToEnterPackagerOptionsGS(*result);
         core::packages::UnfreezePackages unfreezeToEnterPackagerOptionsPackageDB = result->unfreezePackages();
-        result->setPackagerOptions(extraPackageFilesDirectoryUnderscorePrefixes,
+        result->setPackagerOptions(packageDB_.enabled_, extraPackageFilesDirectoryUnderscorePrefixes,
                                    extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                    extraPackageFilesDirectorySlashPrefixes, packageSkipRBIExportEnforcementDirs,
                                    allowRelaxedPackagerChecksFor, packagerLayers, errorHint);
@@ -2401,7 +2401,8 @@ packages::PackageDB &GlobalState::packageDB() {
     return packageDB_;
 }
 
-void GlobalState::setPackagerOptions(const std::vector<std::string> &extraPackageFilesDirectoryUnderscorePrefixes,
+void GlobalState::setPackagerOptions(bool packagerEnabled,
+                                     const std::vector<std::string> &extraPackageFilesDirectoryUnderscorePrefixes,
                                      const std::vector<std::string> &extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                      const std::vector<std::string> &extraPackageFilesDirectorySlashPrefixes,
                                      const std::vector<std::string> &packageSkipRBIExportEnforcementDirs,
@@ -2409,7 +2410,7 @@ void GlobalState::setPackagerOptions(const std::vector<std::string> &extraPackag
                                      const std::vector<std::string> &packagerLayers, std::string errorHint) {
     ENFORCE_NO_TIMER(!packageDB_.frozen);
 
-    packageDB_.enabled_ = true;
+    packageDB_.enabled_ = packagerEnabled;
     packageDB_.extraPackageFilesDirectoryUnderscorePrefixes_ = extraPackageFilesDirectoryUnderscorePrefixes;
     packageDB_.extraPackageFilesDirectorySlashDeprecatedPrefixes_ = extraPackageFilesDirectorySlashDeprecatedPrefixes;
     packageDB_.extraPackageFilesDirectorySlashPrefixes_ = extraPackageFilesDirectorySlashPrefixes;

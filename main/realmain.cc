@@ -604,7 +604,7 @@ int realmain(int argc, char *argv[]) {
             {
                 core::UnfreezeNameTable unfreezeToEnterPackagerOptionsGS(*gs);
                 core::packages::UnfreezePackages unfreezeToEnterPackagerOptionsPackageDB = gs->unfreezePackages();
-                gs->setPackagerOptions(opts.extraPackageFilesDirectoryUnderscorePrefixes,
+                gs->setPackagerOptions(true, opts.extraPackageFilesDirectoryUnderscorePrefixes,
                                        opts.extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                        opts.extraPackageFilesDirectorySlashPrefixes,
                                        opts.packageSkipRBIExportEnforcementDirs, opts.allowRelaxedPackagerChecksFor,
