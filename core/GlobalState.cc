@@ -2172,13 +2172,12 @@ unique_ptr<GlobalState> GlobalState::deepCopyGlobalState(bool keepId) const {
     return result;
 }
 
-unique_ptr<GlobalState>
-GlobalState::copyForIndex(const vector<string> &extraPackageFilesDirectoryUnderscorePrefixes,
-                          const vector<string> &extraPackageFilesDirectorySlashDeprecatedPrefixes,
-                          const vector<string> &extraPackageFilesDirectorySlashPrefixes,
-                          const vector<string> &packageSkipRBIExportEnforcementDirs,
-                          const vector<string> &allowRelaxedPackagerChecksFor, const vector<string> &packagerLayers,
-                          string errorHint) const {
+unique_ptr<GlobalState> GlobalState::copyForIndex(
+    const bool packagerEnabled, const vector<string> &extraPackageFilesDirectoryUnderscorePrefixes,
+    const vector<string> &extraPackageFilesDirectorySlashDeprecatedPrefixes,
+    const vector<string> &extraPackageFilesDirectorySlashPrefixes,
+    const vector<string> &packageSkipRBIExportEnforcementDirs, const vector<string> &allowRelaxedPackagerChecksFor,
+    const vector<string> &packagerLayers, string errorHint) const {
     auto result = make_unique<GlobalState>(this->errorQueue, this->epochManager);
 
     result->initEmpty();
@@ -2189,10 +2188,10 @@ GlobalState::copyForIndex(const vector<string> &extraPackageFilesDirectoryUnders
     result->fileRefByPath = this->fileRefByPath;
     result->kvstoreUuid = this->kvstoreUuid;
 
-    {
+    if (packagerEnabled) {
         core::UnfreezeNameTable unfreezeToEnterPackagerOptionsGS(*result);
         core::packages::UnfreezePackages unfreezeToEnterPackagerOptionsPackageDB = result->unfreezePackages();
-        result->setPackagerOptions(packageDB_.enabled_, extraPackageFilesDirectoryUnderscorePrefixes,
+        result->setPackagerOptions(extraPackageFilesDirectoryUnderscorePrefixes,
                                    extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                    extraPackageFilesDirectorySlashPrefixes, packageSkipRBIExportEnforcementDirs,
                                    allowRelaxedPackagerChecksFor, packagerLayers, errorHint);
@@ -2234,10 +2233,10 @@ GlobalState::copyForSlowPath(const vector<string> &extraPackageFilesDirectoryUnd
     result->typeArguments.reserve(this->typeArguments.capacity());
     result->typeMembers.reserve(this->typeMembers.capacity());
 
-    {
+    if (packageDB().enabled()) {
         core::UnfreezeNameTable unfreezeToEnterPackagerOptionsGS(*result);
         core::packages::UnfreezePackages unfreezeToEnterPackagerOptionsPackageDB = result->unfreezePackages();
-        result->setPackagerOptions(packageDB_.enabled_, extraPackageFilesDirectoryUnderscorePrefixes,
+        result->setPackagerOptions(extraPackageFilesDirectoryUnderscorePrefixes,
                                    extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                    extraPackageFilesDirectorySlashPrefixes, packageSkipRBIExportEnforcementDirs,
                                    allowRelaxedPackagerChecksFor, packagerLayers, errorHint);
@@ -2401,8 +2400,7 @@ packages::PackageDB &GlobalState::packageDB() {
     return packageDB_;
 }
 
-void GlobalState::setPackagerOptions(bool packagerEnabled,
-                                     const std::vector<std::string> &extraPackageFilesDirectoryUnderscorePrefixes,
+void GlobalState::setPackagerOptions(const std::vector<std::string> &extraPackageFilesDirectoryUnderscorePrefixes,
                                      const std::vector<std::string> &extraPackageFilesDirectorySlashDeprecatedPrefixes,
                                      const std::vector<std::string> &extraPackageFilesDirectorySlashPrefixes,
                                      const std::vector<std::string> &packageSkipRBIExportEnforcementDirs,
@@ -2410,7 +2408,7 @@ void GlobalState::setPackagerOptions(bool packagerEnabled,
                                      const std::vector<std::string> &packagerLayers, std::string errorHint) {
     ENFORCE_NO_TIMER(!packageDB_.frozen);
 
-    packageDB_.enabled_ = packagerEnabled;
+    packageDB_.enabled_ = true;
     packageDB_.extraPackageFilesDirectoryUnderscorePrefixes_ = extraPackageFilesDirectoryUnderscorePrefixes;
     packageDB_.extraPackageFilesDirectorySlashDeprecatedPrefixes_ = extraPackageFilesDirectorySlashDeprecatedPrefixes;
     packageDB_.extraPackageFilesDirectorySlashPrefixes_ = extraPackageFilesDirectorySlashPrefixes;

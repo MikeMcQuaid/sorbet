@@ -112,7 +112,7 @@ void setGlobalStateOptions(core::GlobalState &gs, const options::Options &opts) 
     if (opts.cacheSensitiveOptions.stripePackages) {
         core::UnfreezeNameTable unfreezeToEnterPackagerOptionsGS(gs);
         core::packages::UnfreezePackages unfreezeToEnterPackagerOptionsPackageDB = gs.unfreezePackages();
-        gs.setPackagerOptions(true, opts.extraPackageFilesDirectoryUnderscorePrefixes,
+        gs.setPackagerOptions(opts.extraPackageFilesDirectoryUnderscorePrefixes,
                               opts.extraPackageFilesDirectorySlashDeprecatedPrefixes,
                               opts.extraPackageFilesDirectorySlashPrefixes, opts.packageSkipRBIExportEnforcementDirs,
                               opts.allowRelaxedPackagerChecksFor, opts.packagerLayers, opts.stripePackagesHint);
@@ -640,6 +640,7 @@ ast::ParsedFilesOrCancelled indexSuppliedFiles(core::GlobalState &baseGs, absl::
     }
 
     std::shared_ptr<const core::GlobalState> emptyGs = baseGs.copyForIndex(
+        opts.cacheSensitiveOptions.stripePackages || opts.packageRBIGeneration,
         opts.extraPackageFilesDirectoryUnderscorePrefixes, opts.extraPackageFilesDirectorySlashDeprecatedPrefixes,
         opts.extraPackageFilesDirectorySlashPrefixes, opts.packageSkipRBIExportEnforcementDirs,
         opts.allowRelaxedPackagerChecksFor, opts.packagerLayers, opts.stripePackagesHint);
