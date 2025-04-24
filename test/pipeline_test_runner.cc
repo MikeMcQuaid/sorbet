@@ -720,16 +720,6 @@ TEST_CASE("PerPhaseTest") { // NOLINT
     trees = move(newTrees);
     fast_sort(trees, [](auto &lhs, auto &rhs) { return lhs.file < rhs.file; });
 
-    if (opts.cacheSensitiveOptions.stripePackages) {
-        absl::c_stable_partition(trees, [&](const auto &pf) { return pf.file.isPackage(*gs); });
-        trees = packager::Packager::runIncremental(*gs, move(trees), *workers);
-        for (auto &tree : trees) {
-            handler.addObserved(*gs, "package-tree", [&]() {
-                return fmt::format("# -- {} --\n{}", tree.file.data(*gs).path(), tree.tree.toString(*gs));
-            });
-        }
-    }
-
     bool ranIncrementalNamer = false;
     {
         // namer
@@ -751,6 +741,16 @@ TEST_CASE("PerPhaseTest") { // NOLINT
 
             handler.addObserved(*gs, "name-tree", [&]() { return tree.tree.toString(*gs); });
             handler.addObserved(*gs, "name-tree-raw", [&]() { return tree.tree.showRaw(*gs); });
+        }
+    }
+
+    if (opts.cacheSensitiveOptions.stripePackages) {
+        absl::c_stable_partition(trees, [&](const auto &pf) { return pf.file.isPackage(*gs); });
+        trees = packager::Packager::runIncremental(*gs, move(trees), *workers);
+        for (auto &tree : trees) {
+            handler.addObserved(*gs, "package-tree", [&]() {
+                return fmt::format("# -- {} --\n{}", tree.file.data(*gs).path(), tree.tree.toString(*gs));
+            });
         }
     }
 
