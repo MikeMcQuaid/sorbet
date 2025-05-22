@@ -8,35 +8,7 @@ class WorkerPool;
 }
 
 namespace sorbet::packager {
-/**
- * This pass transforms package files (`foo/__package.rb`) from
- *
- *   class Project::Foo < PackageSpec
- *     import Project::Bar
- *
- *     export Baz
- *     export_methods FooClassWithMethods
- *   end
- *
- * given
- *
- *   class Project::Bar < PackageSpec
- *     export SomeClassInBar
- *     export Inner::SomeOtherClassInBar
- *   end
- *
- * to:
- *
- *   class <PackageSpecRegistry>::Project::Foo < PackageSpec
- *    import <PackageSpecRegistry>::Project::Bar
- *
- *    export Package::Baz
- *   end
- *
- * Note that packages cannot have `_` in their names, so the above name mangling is 1:1.
- *
- * This pass intentionally runs outside of rewriter so that its output does not get cached.
- */
+// TODO(jez) Re-document this after you're done merging packager into namer.
 class Packager final {
 public:
     static void findPackages(core::GlobalState &gs, absl::Span<ast::ParsedFile> files);
