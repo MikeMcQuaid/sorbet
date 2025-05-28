@@ -430,9 +430,25 @@ public:
                               path.has_value();
             }
             if (!causesCycle && !layeringViolation && !strictDependenciesTooLow) {
+                std::optional<core::AutocorrectSuggestion> importAutocorrect;
+                if (!wasImported || importedAsTest) {
+                    if (auto exp = this->package.addImport(ctx, pkg, isTestImport)) {
+                        importAutocorrect.emplace(exp.value());
+                    }
+                }
+                std::optional<core::AutocorrectSuggestion> exportAutocorrect;
+                if (!isExported) {
+                    auto symToExport = litSymbol;
+                    auto enumClass = getEnumClassForEnumValue(ctx.state, symToExport);
+                    if (enumClass.exists()) {
+                        symToExport = enumClass;
+                    }
+                    if (auto exp = pkg.addExport(ctx, symToExport)) {
+                        exportAutocorrect.emplace(exp.value());
+                    }
+                }
                 if (!isExported) {
                     if (auto e = ctx.beginError(lit.loc(), core::errors::Packager::UsedPackagePrivateName)) {
-                        auto &pkg = ctx.state.packageDB().getPackageInfo(otherPackage);
                         e.setHeader("`{}` resolves but is not exported from `{}`", litSymbol.show(ctx), pkg.show(ctx));
                         auto definedHereLoc = litSymbol.loc(ctx);
                         if (definedHereLoc.file().data(ctx).isRBI()) {
@@ -445,24 +461,19 @@ public:
                             e.addErrorLine(definedHereLoc, "Defined here");
                         }
 
-                        auto symToExport = litSymbol;
-                        auto enumClass = getEnumClassForEnumValue(ctx.state, symToExport);
-                        if (enumClass.exists()) {
-                            symToExport = enumClass;
-                        }
-                        if (auto exp = pkg.addExport(ctx, symToExport)) {
-                            e.addAutocorrect(std::move(exp.value()));
-                        }
-                        if (!db.errorHint().empty()) {
-                            e.addErrorNote("{}", db.errorHint());
+                        if (exportAutocorrect.has_value()) {
+                            e.addAutocorrect(std::move(exportAutocorrect.value()));
+                            if (!db.errorHint().empty()) {
+                                e.addErrorNote("{}", db.errorHint());
+                            }
                         }
                     }
                 } else if (!wasImported) {
                     if (auto e = ctx.beginError(lit.loc(), core::errors::Packager::MissingImport)) {
                         e.setHeader("`{}` resolves but its package is not imported", lit.symbol().show(ctx));
                         e.addErrorLine(pkg.declLoc(), "Exported from package here");
-                        if (auto exp = this->package.addImport(ctx, pkg, isTestImport)) {
-                            e.addAutocorrect(std::move(exp.value()));
+                        if (importAutocorrect.has_value()) {
+                            e.addAutocorrect(std::move(importAutocorrect.value()));
                             if (!db.errorHint().empty()) {
                                 e.addErrorNote("{}", db.errorHint());
                             }
@@ -479,9 +490,8 @@ public:
                     if (auto e = ctx.beginError(lit.loc(), core::errors::Packager::UsedTestOnlyName)) {
                         e.setHeader("Used `{}` constant `{}` in non-test file", "test_import", litSymbol.show(ctx));
                         e.addErrorLine(pkg.declLoc(), "Defined here");
-                        auto &pkg = ctx.state.packageDB().getPackageInfo(otherPackage);
-                        if (auto exp = this->package.addImport(ctx, pkg, false)) {
-                            e.addAutocorrect(std::move(exp.value()));
+                        if (importAutocorrect.has_value()) {
+                            e.addAutocorrect(std::move(importAutocorrect.value()));
                             if (!db.errorHint().empty()) {
                                 e.addErrorNote("{}", db.errorHint());
                             }
